@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CPU Scheduling Simulator</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f4f8fb;
+      margin: 0;
+      padding: 20px;
+      color: #333;
+    }
+
+    h2 {
+      text-align: center;
+      color: #2c3e50;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: white;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    th, td {
+      padding: 12px;
+      text-align: center;
+      border-bottom: 1px solid #ddd;
+    }
+
+    th {
+      background-color: #2c3e50;
+      color: white;
+    }
+
+    input[type="number"], select {
+      padding: 8px;
+      margin: 5px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      min-width: 80px;
+    }
+
+    button {
+      background-color: #3498db;
+      color: white;
+      padding: 10px 20px;
+      margin: 10px 5px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #2980b9;
+    }
+
+    .gantt span {
+      display: inline-block;
+      padding: 10px;
+      margin: 5px;
+      border-radius: 5px;
+      color: white;
+      font-weight: bold;
+      min-width: 60px;
+      text-align: center;
+    }
+
+    .gantt {
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    #formArea, #result {
+      margin-top: 20px;
+    }
+
+    .results p {
+      font-weight: bold;
+      color: #34495e;
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 30px;
+      font-size: 14px;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>CPU Scheduling Simulator</h2>
+
+  <label>Number of Processes: <input type="number" id="num" value="4"></label>
+  <button onclick="generateForm()">Generate Form</button>
+
+  <div id="formArea"></div>
+
+  <h3>Select Scheduling Algorithm:</h3>
+  <select id="algorithm">
+    <option value="fcfs">First Come First Serve (FCFS)</option>
+    <option value="sjf">Shortest Job First (SJF)</option>
+    <option value="priority">Priority Scheduling</option>
+    <option value="rr">Round Robin (RR)</option>
+  </select>
+  <label>Quantum (for RR): <input type="number" id="quantum" value="2"></label>
+  <br>
+  <button onclick="simulate()">Simulate</button>
+
+  <div class="gantt" id="gantt"></div>
+  <div id="result"></div>
+
+  <div class="footer">
+    &copy; 2025 CPU Scheduler Simulator by II-CSE-D 
+  </div>
+
+  <script>
+    const colors = ["#e74c3c", "#3498db", "#2ecc71", "#f39c12", "#9b59b6", "#16a085", "#e67e22", "#1abc9c", "#34495e", "#95a5a6"];
+
+    function generateForm() {
+      const num = parseInt(document.getElementById("num").value);
+      let html = "<table><tr><th>PID</th><th>Burst Time</th><th>Arrival Time</th><th>Priority</th></tr>";
+      for (let i = 0; i < num; i++) {
+        html += `<tr>
+          <td>P${i}</td>
+          <td><input type="number" id="bt${i}" value="5"></td>
+          <td><input type="number" id="at${i}" value="0"></td>
+          <td><input type="number" id="pr${i}" value="${i+1}"></td>
+        </tr>`;
+      }
+      html += "</table>";
+      document.getElementById("formArea").innerHTML = html;
+    }
+
+    function simulate() {
+      const n = parseInt(document.getElementById("num").value);
+      const algo = document.getElementById("algorithm").value;
+      const quantum = parseInt(document.getElementById("quantum").value);
+      let processes = [];
+
+      for (let i = 0; i < n; i++) {
+        processes.push({
+          pid: "P" + i,
+          bt: parseInt(document.getElementById("bt" + i).value),
+          at: parseInt(document.getElementById("at" + i).value),
+          pr: parseInt(document.getElementById("pr" + i).value),
+          rt: parseInt(document.getElementById("bt" + i).value)
+        });
+      }
+
+      let time = 0, completed = 0, gantt = [];
+
+      if (algo === "fcfs") {
+        processes.sort((a, b) => a.at - b.at);
+        for (let p of processes) {
+          if (time < p.at) time = p.at;
+          gantt.push({ pid: p.pid, start: time, end: time + p.bt });
+          p.ct = time + p.bt;
+          time += p.bt;
+        }
+      }
+
+      else if (algo === "sjf") {
+        let ready = [], i = 0;
+        processes.sort((a, b) => a.at - b.at);
+        while (completed < n) {
+          while (i < n && processes[i].at <= time) ready.push(processes[i++]);
+          if (ready.length === 0) { time++; continue; }
+          ready.sort((a, b) => a.bt - b.bt);
+          let p = ready.shift();
+          gantt.push({ pid: p.pid, start: time, end: time + p.bt });
+          p.ct = time + p.bt;
+          time += p.bt;
+          completed++;
+        }
+      }
+
+      else if (algo === "priority") {
+        let ready = [], i = 0;
+        processes.sort((a, b) => a.at - b.at);
+        while (completed < n) {
+          while (i < n && processes[i].at <= time) ready.push(processes[i++]);
+          if (ready.length === 0) { time++; continue; }
+          ready.sort((a, b) => a.pr - b.pr);
+          let p = ready.shift();
+          gantt.push({ pid: p.pid, start: time, end: time + p.bt });
+          p.ct = time + p.bt;
+          time += p.bt;
+          completed++;
+        }
+      }
+
+      else if (algo === "rr") {
+        let queue = [], i = 0;
+        processes.sort((a, b) => a.at - b.at);
+        while (completed < n || queue.length > 0) {
+          while (i < n && processes[i].at <= time) queue.push(processes[i++]);
+          if (queue.length === 0) { time++; continue; }
+          let p = queue.shift();
+          let execTime = Math.min(p.rt, quantum);
+          gantt.push({ pid: p.pid, start: time, end: time + execTime });
+          time += execTime;
+          p.rt -= execTime;
+          while (i < n && processes[i].at <= time) queue.push(processes[i++]);
+          if (p.rt > 0) queue.push(p);
+          else { p.ct = time; completed++; }
+        }
+      }
+
+      for (let p of processes) {
+        p.tat = p.ct - p.at;
+        p.wt = p.tat - p.bt;
+      }
+
+      let ganttHTML = "<h3>Gantt Chart</h3><div class='gantt'>";
+      for (let g of gantt) {
+        let color = colors[parseInt(g.pid.slice(1)) % colors.length];
+        ganttHTML += `<span style="background:${color}">${g.pid}<br>${g.start}-${g.end}</span>`;
+      }
+      ganttHTML += "</div>";
+      document.getElementById("gantt").innerHTML = ganttHTML;
+
+      let avgWT = processes.reduce((a, b) => a + b.wt, 0) / n;
+      let avgTAT = processes.reduce((a, b) => a + b.tat, 0) / n;
+
+      let resultHTML = "<h3>Results</h3><table><tr><th>PID</th><th>CT</th><th>TAT</th><th>WT</th></tr>";
+      for (let p of processes)
+        resultHTML += `<tr><td>${p.pid}</td><td>${p.ct}</td><td>${p.tat}</td><td>${p.wt}</td></tr>`;
+      resultHTML += `</table><div class='results'><p>Average Waiting Time: ${avgWT.toFixed(2)}</p>`;
+      resultHTML += `<p>Average Turnaround Time: ${avgTAT.toFixed(2)}</p></div>`;
+      document.getElementById("result").innerHTML = resultHTML;
+    }
+  </script>
+</body>
+</html>
